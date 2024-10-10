@@ -1,27 +1,34 @@
+// src/services/accountService.ts
 import { PrismaClient } from "@prisma/client";
-
+import { ServiceResponse } from "../../types/serviceResponse";
+import { accoutSchema } from "../../types/accout";
 const prisma = new PrismaClient();
-
-export async function desactiveAccout(id:number) {
-  const accout = await prisma.conta.update({
-  where: {id:id},
-  data: {status:false}
-  })
-  if(!accout)
-  {
-    return ('Account not found');
+// Serviço para desativar uma conta
+export async function desactiveAccount(userId: number, accountId: number):Promise<ServiceResponse<accoutSchema>> {
+  // Verifica se o usuário tem permissão para desativar a conta
+  if (userId !== accountId) {
+    return {
+      type:'error',
+      status:'UNAUTHORIZED',
+      data:{
+        message:'Usuario sem permisao para desativar conta'
+      }
+    };
   }
-  return ('Account deleted');
 
+  try {
+    // Atualiza o status da conta para `false` (desativada)
+    const account = await prisma.conta.update({
+      where: { id: accountId },
+      data: { status: false },
+    });
 
-}
-
-export async function deleteAccout(id:number) {
-  const accout = await prisma.conta.delete({
-    where:{id}
-  })
-  if(!accout){
-    return ('Account not found')
+    return {
+      type:'success',
+      status:'SUCCESS',
+      data: account
+    };
+  } catch (error) {
+    throw new Error('Account not found or failed to deactivate');
   }
-  return accout
 }

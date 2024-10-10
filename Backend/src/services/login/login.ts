@@ -2,31 +2,62 @@ import { PrismaClient } from "@prisma/client";
 import { Login } from "../../types/login";
 import { generateToken } from "../../utils/jtwUttils";
 import bcrypt from 'bcrypt';
+import { ServiceResponse } from "../../types/serviceResponse";
 
 const prisma = new PrismaClient();
-
-export async function Login(data:Login) {
-const {cpf, cnpj, password} = data;
-if ((!cpf && !cnpj || cpf && cnpj))
-{
-  return ('informe apenas um dos campos, cpf ou cnpj');
+type TokenPayload = {
+  token: string;
 }
+export async function Login(data:Login):Promise<ServiceResponse<TokenPayload>> {
+const {cpfOrCnpj, password} = data;
+if (!cpfOrCnpj && !password) {
+  return {
+    type: 'error',
+    status: 'NO_CONTENT',
+    data: {
+      message: 'Invalid CPF or CNPJ',
+    },
+  };
+}
+
 const accout = await prisma.conta.findFirst({
   where: {
-    OR: [{cpf:cpf },
-      {cnpj:cnpj}
-    ]
+   AND: {
+    cpfOrCnpj: cpfOrCnpj,
+   }
   }
 })
+console.log('Servicess',accout);
+
 if(!accout) {
-  return('Login INvalido')
+  return {
+   type: 'error',
+    status: 'NOT_FOUND',
+    data: {
+      message: 'Account not found',
+    },
+  }
 
 }
-const comparePassword =  bcrypt.compare(password, accout.password);
+const comparePassword = await bcrypt.compare(password, accout.password);
 if(!comparePassword) {
-  return('Login INvalido')
+  return {
+    type: 'error',
+    status: 'UNAUTHORIZED',
+    data: {
+      message: 'Invalid password',
+    },
+  }
 }
+// console.log('service',comparePassword);
+
 
 const token = generateToken(accout);
-return `LOGIN SUCEDIDO: ${token}`
+return {
+  type: 'success',
+  status: 'SUCCESS',
+  data: {
+    token,
+  },
+}
  }

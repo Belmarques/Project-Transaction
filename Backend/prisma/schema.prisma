@@ -15,8 +15,8 @@ datasource db {
 
 model conta {
   id           Int           @id @default(autoincrement())
-  cpf          String?       @unique
-  cnpj         String?       @unique
+  cpfOrCnpj    String        @default("")
+  type         String
   name         String
   email        String
   password     String

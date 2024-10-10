@@ -1,6 +1,5 @@
 export interface Login {
-  cpf: string;
-  cnpj: string;
+  cpfOrCnpj: string;
   password: string;
 
 }

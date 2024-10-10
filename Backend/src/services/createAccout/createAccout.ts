@@ -1,43 +1,55 @@
 import { PrismaClient } from "@prisma/client";
-import { Account } from "../../types/accout";
-import { isValidCpfOrCnpj } from "../../utils/validationsCpf";
+import { Account, accoutSchema } from "../../types/accout";
+import { isValidCpfOrCnpj, validadeSchema } from "../../utils/validationsCpf";
+import { ServiceResponse } from "../../types/serviceResponse";
 import bcrypt from 'bcrypt';
+
 
 const prisma = new PrismaClient();
 
-export async function createAccount(data:Account) {
+export async function createAccount(data:Account):Promise<ServiceResponse<accoutSchema>> {
   
-  if((!data.cnpj && !data.cpf || data.cpf, data.cnpj))
-    {
-      return ( 'um dos campos devem estar preenchidos');
-    }
-    const document = data.cpf || data.cnpj;
-    if(!isValidCpfOrCnpj(document))
-    {
-      return ('Cpf Or Cnpj Invalid');
+ const validateAccout = validadeSchema.parse(data)
+    const document = data.cpfOrCnpj;
+    if (!isValidCpfOrCnpj(document)) {
+  return {
+    type: 'error',
+    status: 'NO_CONTENT',
+    data: {
+      message: 'Invalid CPF or CNPJ',
+    },
+  }
     }
     const existingAccount = await prisma.conta.findFirst({
-      where: {
-        OR: [{
-          cpf: data.cpf
-        },
-      {cnpj: data.cnpj}]
-
-      }
+ where: {
+  AND: {
+    cpfOrCnpj: data.cpfOrCnpj,
+  }
+ }
     })
     if(existingAccount)
     {
-      return ('Account already exists');
+      return {
+        type: 'error',
+        status: 'CONFLICT',
+        data: {
+          message: 'Account already exists'
+        }
     }
+  }
+  const hashedPassword = await bcrypt.hash(data.password, 10);
+  const accountData = {
+    ...validateAccout,
+    password: hashedPassword
+  }
   const accout = await prisma.conta.create({
-    data: {
-      name: data.name,
-      email: data.email,
-      password: await bcrypt.hash(data.password, 10),
-      cpf: data.cpf,
-      cnpj:data.cnpj,
-    status: true,    }
+    data:accountData
   })
   
-return accout;    } 
-  
+return {
+  type: 'success',
+  status: 'CREATED',
+  data: accout,
+
+    } 
+  }
